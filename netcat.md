@@ -143,7 +143,7 @@ ncat --ssl -lvnp 4444
 # Proxy üzerinden
 ncat --proxy <proxy_ip>:<port> --proxy-type socks5 <hedef_ip> <port>
 
-# Dosya transfer (SSL şifreli)
+# Dosya transferi (SSL şifreli)
 # Alıcı:
 ncat --ssl -lvnp 4444 > dosya
 # Gönderici:

