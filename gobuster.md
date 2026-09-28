@@ -92,7 +92,7 @@ ffuf -u "http://hedef.com/page?FUZZ=deger" -w params.txt
 ffuf -u "http://hedef.com/page?id=FUZZ" -w /usr/share/seclists/Fuzzing/numbers.txt
 
 # POST verisi
-ffuf -u http://hedef.com/login -w wordlist.txt -d "username=admin&******" -X POST
+ffuf -u http://hedef.com/login -w wordlist.txt -d "username=admin&pass=FUZZ" -X POST
 ```
 
 ### Virtual Host / Alt Alan Adı Keşfi
@@ -118,7 +118,7 @@ ffuf -u https://hedef.com/FUZZ -w wordlist.txt -k
 
 ```bash
 ffuf -u http://hedef.com/login -w kullanicilar.txt:USER -w parolalar.txt:PASS \
-  -d "username=USER&******" -X POST -fc 401
+  -d "username=USER&pass=PASS" -X POST -fc 401
 ```
 
 ### Seçenekler Özeti

