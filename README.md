@@ -10,7 +10,7 @@ Pentesting, CTF ve bug bounty süreçlerinde hızlı başvuru için hazırlandı
 |---|---|
 | [nmap](nmap/) | Port tarama, servis tespiti, flagler |
 | [gobuster](gobuster/) | Dizin ve dosya keşfi |
-| [SQLi](sqli/) | SQL Injection — UNION, bypass, DBMS farkları |
+| [SQLi](sqli/) | SQL Injection — UNION, Blind (boolean/error/time/OOB), bypass, DBMS farkları |
 | [Linux Privesc](linux-privesc/) | Yetki yükseltme — sudo, SUID, GTFOBins |
 | [John / Hash Kırma](john-hash/) | Hash tanıma, John the Ripper, Hashcat |
 | [Hydra](hydra/) | Online brute force (SSH, FTP, HTTP) |
