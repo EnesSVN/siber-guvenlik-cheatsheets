@@ -19,6 +19,7 @@ Pentesting, CTF ve bug bounty süreçlerinde hızlı başvuru için hazırlandı
 | [SSH & FTP](ssh-ftp/) | Uzak bağlantı protokolleri |
 | [Steghide](steghide/) | Steganografi araçları |
 | [Reverse Shell](reverse-shell/) | Payload'lar, TTY upgrade, web shell |
+| [XSS](xss/) | Cross-Site Scripting — Reflected, Stored, DOM, sink farkları, bypass |
 
 ## Hakkında
 
